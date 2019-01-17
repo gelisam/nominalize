@@ -1,0 +1,19 @@
+name:                generics-unrep
+version:             0.1.0.0
+#synopsis:            
+#description:         
+homepage:            https://github.com/gelisam/generics-unrep#readme
+github:              gelisam/generics-unrep
+license:             PublicDomain
+author:              Samuel Gélineau
+maintainer:          gelisam+github@gmail.com
+category:            Generics
+extra-source-files:
+- README.md
+
+dependencies:
+  - base >= 4.7 && < 5
+
+library:
+  source-dirs:      src
+  ghc-options: -W -Wall

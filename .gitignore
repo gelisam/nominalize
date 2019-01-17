@@ -1,0 +1,4 @@
+.stack-work/
+generics-unrep.cabal
+dist/
+dist-newstyle/
