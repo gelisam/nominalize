@@ -13,7 +13,16 @@ extra-source-files:
 
 dependencies:
   - base >= 4.7 && < 5
+  - template-haskell
 
 library:
   source-dirs:      src
   ghc-options: -W -Wall
+
+tests:
+  doctests:
+    source-dirs: tests
+    main: doctests.hs
+    dependencies:
+      - doctest
+      - doctest-discover
