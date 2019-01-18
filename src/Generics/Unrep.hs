@@ -6,15 +6,7 @@ import GHC.TypeLits
 import GHC.Generics
 import Language.Haskell.TH
 
-
-class KnownBool (bool :: Bool) where
-  boolVal :: proxy bool -> Bool
-
-instance KnownBool 'True where
-  boolVal _ = True
-
-instance KnownBool 'False where
-  boolVal _ = False
+import Data.Bool.Known
 
 
 class KnownMetaData (rep :: * -> *) where
