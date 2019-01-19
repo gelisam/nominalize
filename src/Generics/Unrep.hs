@@ -1,30 +1,10 @@
-{-# LANGUAGE AllowAmbiguousTypes, DataKinds, FlexibleInstances, KindSignatures, ScopedTypeVariables, TypeApplications, TypeSynonymInstances #-}
+{-# LANGUAGE KindSignatures, ScopedTypeVariables, TypeApplications #-}
 module Generics.Unrep where
 
 import Data.Proxy
-import GHC.TypeLits
-import GHC.Generics
 import Language.Haskell.TH
 
-import Data.Bool.Known
-
-
-class KnownMetaData (rep :: * -> *) where
-  datatypeNameVal :: proxy rep -> String
-  moduleNameVal   :: proxy rep -> String
-  packageNameVal  :: proxy rep -> String
-  isNewtypeVal    :: proxy rep -> Bool
-
-instance ( KnownSymbol name
-         , KnownSymbol moduleName
-         , KnownSymbol packageName
-         , KnownBool   isNewtype
-         )
-      => KnownMetaData (D1 ('MetaData name moduleName packageName isNewtype) rep) where
-  datatypeNameVal _ = symbolVal (Proxy @name)
-  moduleNameVal   _ = symbolVal (Proxy @moduleName)
-  packageNameVal  _ = symbolVal (Proxy @packageName)
-  isNewtypeVal    _ = boolVal   (Proxy @isNewtype)
+import GHC.Generics.MetaData.Known
 
 
 -- |
@@ -34,15 +14,18 @@ instance ( KnownSymbol name
 -- >>> import GHC.Generics
 -- >>> :{
 -- data Tree = Leaf | Branch Tree Tree deriving Generic
--- makeUnrep @(Rep Tree)
+-- makeUnrep (Proxy @(Rep Tree))
 -- :}
 --
 -- >>> :info Tree2
 -- data Tree2 = Leaf2 | Branch2 Tree2 Tree2
 -- ...
-makeUnrep :: forall rep. KnownMetaData rep => Q [Dec]
-makeUnrep = do
-  typeName <- newName (datatypeNameVal (Proxy @rep) ++ "2")
+makeUnrep :: forall (rep :: * -> *). KnownMetaData rep
+          => Proxy rep -> Q [Dec]
+makeUnrep _ = do
+  let metaData :: MetaData
+      metaData = metaDataVal (Proxy @rep)
+  typeName <- newName (metaDataDatatypeName metaData ++ "2")
   ctorName1 <- newName "Leaf2"
   ctorName2 <- newName "Branch2"
 
