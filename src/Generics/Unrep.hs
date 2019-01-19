@@ -4,6 +4,7 @@ module Generics.Unrep where
 import Data.Proxy
 import Language.Haskell.TH
 
+import GHC.Generics.MetaCons.Known
 import GHC.Generics.MetaData.Known
 
 
@@ -18,34 +19,38 @@ import GHC.Generics.MetaData.Known
 -- :}
 --
 -- >>> :info Tree2
--- data Tree2 = Leaf2 | Branch2 Tree2 Tree2
+-- data Tree2 = Leaf2 Tree2 | Branch2 Tree2
 -- ...
-makeUnrep :: forall (rep :: * -> *). KnownMetaData rep
+makeUnrep :: forall (rep :: * -> *)
+           . ( KnownMetaData     rep
+             , KnownMetaConsList rep
+             )
           => Proxy rep -> Q [Dec]
 makeUnrep _ = do
   let metaData :: MetaData
       metaData = metaDataVal (Proxy @rep)
-  typeName <- newName (metaDataDatatypeName metaData ++ "2")
-  ctorName1 <- newName "Leaf2"
-  ctorName2 <- newName "Branch2"
 
-  defaultBang <- bang noSourceUnpackedness noSourceStrictness
+      metaConsList :: [MetaCons]
+      metaConsList = metaConsListVal (Proxy @rep)
+
+  typeName :: Name
+           <- newName (metaDataDatatypeName metaData ++ "2")
+
+  defaultBang :: Bang
+              <- bang noSourceUnpackedness noSourceStrictness
 
   let typeParameters :: [TyVarBndr]
       typeParameters = []
 
-      ctor1 :: Con
-      ctor1 = NormalC ctorName1 []
+      makeCon :: MetaCons -> Q Con
+      makeCon metaCons = do
+        name <- newName (metaConsName metaCons ++ "2")
+        pure $ NormalC name [(defaultBang, ConT typeName)]
 
-      ctor2 :: Con
-      ctor2 = NormalC ctorName2 [ (defaultBang, ConT typeName)
-                                , (defaultBang, ConT typeName)
-                                ]
+  constructors :: [Con]
+               <- traverse makeCon metaConsList
 
-      constructors :: [Con]
-      constructors = [ctor1, ctor2]
-
-      dec :: Dec
+  let dec :: Dec
       dec = DataD [] typeName typeParameters Nothing constructors []
 
   pure [dec]
