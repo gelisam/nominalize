@@ -3,9 +3,11 @@ module Generics.Unrep where
 
 import Data.Proxy
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
 
 import GHC.Generics.MetaCons.Known
 import GHC.Generics.MetaData.Known
+import GHC.Generics.MetaSel.Known
 
 
 -- |
@@ -19,11 +21,12 @@ import GHC.Generics.MetaData.Known
 -- :}
 --
 -- >>> :info Tree2
--- data Tree2 = Leaf2 Tree2 | Branch2 Tree2
+-- data Tree2 = Leaf2 | Branch2 Tree2 Tree2
 -- ...
 makeUnrep :: forall (rep :: * -> *)
-           . ( KnownMetaData     rep
-             , KnownMetaConsList rep
+           . ( KnownMetaData        rep
+             , KnownMetaConsList    rep
+             , KnownMetaSelListList rep
              )
           => Proxy rep -> Q [Dec]
 makeUnrep _ = do
@@ -32,6 +35,9 @@ makeUnrep _ = do
 
       metaConsList :: [MetaCons]
       metaConsList = metaConsListVal (Proxy @rep)
+
+      metaSelListList :: [[MetaSel]]
+      metaSelListList = metaSelListListVal (Proxy @rep)
 
   typeName :: Name
            <- newName (metaDataDatatypeName metaData ++ "2")
@@ -42,13 +48,16 @@ makeUnrep _ = do
   let typeParameters :: [TyVarBndr]
       typeParameters = []
 
-      makeCon :: MetaCons -> Q Con
-      makeCon metaCons = do
-        name <- newName (metaConsName metaCons ++ "2")
-        pure $ NormalC name [(defaultBang, ConT typeName)]
+      makeBangType :: MetaSel -> Q BangType
+      makeBangType _ = pure (defaultBang, ConT typeName)
+
+      makeCon :: MetaCons -> [MetaSel] -> Q Con
+      makeCon metaCons metaSelList = NormalC
+                                 <$> newName (metaConsName metaCons ++ "2")
+                                 <*> traverse makeBangType metaSelList
 
   constructors :: [Con]
-               <- traverse makeCon metaConsList
+               <- sequence (zipWith makeCon metaConsList metaSelListList)
 
   let dec :: Dec
       dec = DataD [] typeName typeParameters Nothing constructors []
