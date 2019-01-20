@@ -1,13 +1,11 @@
-{-# LANGUAGE KindSignatures, ScopedTypeVariables, TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, KindSignatures, ScopedTypeVariables, TypeApplications #-}
 module Generics.Unrep where
 
 import Data.Proxy
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import GHC.Generics.MetaCons.Known
-import GHC.Generics.MetaData.Known
-import GHC.Generics.MetaSel.Known
+import Generics.Unrep.ToTH
 
 
 -- |
@@ -24,20 +22,20 @@ import GHC.Generics.MetaSel.Known
 -- data Tree2 = Leaf2 | Branch2 Tree2 Tree2
 -- ...
 makeUnrep :: forall (rep :: * -> *)
-           . ( KnownMetaData        rep
-             , KnownMetaConsList    rep
-             , KnownMetaSelListList rep
+           . ( ToTH MetaData    rep
+             , ToTH [MetaCons]  rep
+             , ToTH [[MetaSel]] rep
              )
           => Proxy rep -> Q [Dec]
 makeUnrep _ = do
   let metaData :: MetaData
-      metaData = metaDataVal (Proxy @rep)
+      metaData = toTH (Proxy @rep)
 
       metaConsList :: [MetaCons]
-      metaConsList = metaConsListVal (Proxy @rep)
+      metaConsList = toTH (Proxy @rep)
 
       metaSelListList :: [[MetaSel]]
-      metaSelListList = metaSelListListVal (Proxy @rep)
+      metaSelListList = toTH (Proxy @rep)
 
   typeName :: Name
            <- newName (metaDataDatatypeName metaData ++ "2")
