@@ -9,86 +9,88 @@ import qualified Language.Haskell.TH.Syntax as TH
 
 
 class ToTH (th :: *) (rep :: k) where
-  toTH :: proxy rep -> th
+  toTH :: proxy rep -> TH.Q th
 
 
 instance ToTH Bool 'True where
-  toTH _ = True
+  toTH _ = pure True
 
 instance ToTH Bool 'False where
-  toTH _ = False
+  toTH _ = pure False
 
 
 instance KnownNat rep
       => ToTH Integer rep where
-  toTH _ = natVal (Proxy @rep)
+  toTH _ = pure $ natVal (Proxy @rep)
 
 instance ToTH Integer rep
       => ToTH Int rep where
-  toTH _ = fromInteger $ toTH (Proxy @rep)
+  toTH _ = fromInteger <$> toTH (Proxy @rep)
 
 
 instance KnownSymbol symbol
       => ToTH String symbol where
-  toTH _ = symbolVal (Proxy @symbol)
+  toTH _ = pure $ symbolVal (Proxy @symbol)
 
 
 instance ToTH (Maybe a) 'Nothing where
-  toTH _ = Nothing
+  toTH _ = pure Nothing
 
 instance ToTH a rep
       => ToTH (Maybe a) ('Just rep) where
-  toTH _ = Just (toTH (Proxy @rep))
+  toTH _ = Just <$> toTH (Proxy @rep)
 
 
 instance ToTH TH.FixityDirection 'Generics.LeftAssociative where
-  toTH _ = TH.InfixL
+  toTH _ = pure TH.InfixL
 
 instance ToTH TH.FixityDirection 'Generics.RightAssociative where
-  toTH _ = TH.InfixR
+  toTH _ = pure TH.InfixR
 
 instance ToTH TH.FixityDirection 'Generics.NotAssociative where
-  toTH _ = TH.InfixN
+  toTH _ = pure TH.InfixN
 
 
 instance ToTH (Maybe TH.Fixity) 'Generics.PrefixI where
-  toTH _ = Nothing
+  toTH _ = pure Nothing
 
 instance ( ToTH TH.FixityDirection associativity
          , ToTH Int                precedence
          ) => ToTH (Maybe TH.Fixity) ('Generics.InfixI associativity precedence) where
-  toTH _ = Just $ TH.Fixity (toTH (Proxy @precedence))
-                            (toTH (Proxy @associativity))
+  toTH _ = Just <$> ( TH.Fixity
+                  <$> toTH (Proxy @precedence)
+                  <*> toTH (Proxy @associativity)
+                    )
 
 
 instance ToTH TH.SourceUnpackedness 'Generics.NoSourceUnpackedness where
-  toTH _ = TH.NoSourceUnpackedness
+  toTH _ = pure TH.NoSourceUnpackedness
 
 instance ToTH TH.SourceUnpackedness 'Generics.SourceNoUnpack where
-  toTH _ = TH.SourceNoUnpack
+  toTH _ = pure TH.SourceNoUnpack
 
 instance ToTH TH.SourceUnpackedness 'Generics.SourceUnpack where
-  toTH _ = TH.SourceUnpack
+  toTH _ = pure TH.SourceUnpack
 
 
 instance ToTH TH.SourceStrictness 'Generics.NoSourceStrictness where
-  toTH _ = TH.NoSourceStrictness
+  toTH _ = pure TH.NoSourceStrictness
 
 instance ToTH TH.SourceStrictness 'Generics.SourceLazy where
-  toTH _ = TH.SourceLazy
+  toTH _ = pure TH.SourceLazy
 
 instance ToTH TH.SourceStrictness 'Generics.SourceStrict where
-  toTH _ = TH.SourceStrict
+  toTH _ = pure TH.SourceStrict
 
 
 instance ToTH TH.DecidedStrictness 'Generics.DecidedLazy where
-  toTH _ = TH.DecidedLazy
+  toTH _ = pure TH.DecidedLazy
 
 instance ToTH TH.DecidedStrictness 'Generics.DecidedStrict where
-  toTH _ = TH.DecidedStrict
+  toTH _ = pure TH.DecidedStrict
 
 instance ToTH TH.DecidedStrictness 'Generics.DecidedUnpack where
-  toTH _ = TH.DecidedUnpack
+  toTH _ = pure TH.DecidedUnpack
 
 
 data MetaSel = MetaSel
@@ -105,10 +107,11 @@ instance ( ToTH (Maybe String)        name
          , ToTH TH.DecidedStrictness  decidedStrictness
          )
       => ToTH MetaSel ('Generics.MetaSel name sourceUnpackedness sourceStrictness decidedStrictness) where
-  toTH _ = MetaSel (toTH (Proxy @name))
-                   (toTH (Proxy @sourceUnpackedness))
-                   (toTH (Proxy @sourceStrictness))
-                   (toTH (Proxy @decidedStrictness))
+  toTH _ = MetaSel
+       <$> toTH (Proxy @name)
+       <*> toTH (Proxy @sourceUnpackedness)
+       <*> toTH (Proxy @sourceStrictness)
+       <*> toTH (Proxy @decidedStrictness)
 
 instance ToTH MetaSel metaSel
       => ToTH MetaSel (Generics.S1 metaSel rep) where
@@ -120,18 +123,19 @@ instance ToTH [MetaSel] rep
   toTH _ = toTH (Proxy @rep)
 
 instance ToTH [MetaSel] Generics.U1 where
-  toTH _ = []
+  toTH _ = pure []
 
 instance ToTH MetaSel metaSel
       => ToTH [MetaSel] (Generics.S1 metaSel rep) where
-  toTH _ = [toTH (Proxy @metaSel)]
+  toTH _ = (:[]) <$> toTH (Proxy @metaSel)
 
 instance ( ToTH [MetaSel] rep1
          , ToTH [MetaSel] rep2
          )
       => ToTH [MetaSel] (rep1 Generics.:*: rep2) where
-  toTH _ = toTH (Proxy @rep1)
-        ++ toTH (Proxy @rep2)
+  toTH _ = (++)
+       <$> toTH (Proxy @rep1)
+       <*> toTH (Proxy @rep2)
 
 
 instance ToTH [[MetaSel]] rep
@@ -139,18 +143,19 @@ instance ToTH [[MetaSel]] rep
   toTH _ = toTH (Proxy @rep)
 
 instance ToTH [[MetaSel]] Generics.V1 where
-  toTH _ = []
+  toTH _ = pure []
 
 instance ToTH [MetaSel] rep
       => ToTH [[MetaSel]] (Generics.C1 metaCons rep) where
-  toTH _ = [toTH (Proxy @rep)]
+  toTH _ = (:[]) <$> toTH (Proxy @rep)
 
 instance ( ToTH [[MetaSel]] rep1
          , ToTH [[MetaSel]] rep2
          )
       => ToTH [[MetaSel]] (rep1 Generics.:+: rep2) where
-  toTH _ = toTH (Proxy @rep1)
-        ++ toTH (Proxy @rep2)
+  toTH _ = (++)
+       <$> toTH (Proxy @rep1)
+       <*> toTH (Proxy @rep2)
 
 
 data MetaCons = MetaCons
@@ -165,9 +170,10 @@ instance ( KnownSymbol            name
          , ToTH Bool              isRecord
          )
       => ToTH MetaCons ('Generics.MetaCons name fixity isRecord) where
-  toTH _ = MetaCons (symbolVal (Proxy @name))
-                    (toTH (Proxy @fixity))
-                    (toTH (Proxy @isRecord))
+  toTH _ = MetaCons
+       <$> pure (symbolVal (Proxy @name))
+       <*> toTH (Proxy @fixity)
+       <*> toTH (Proxy @isRecord)
 
 instance ToTH MetaCons metaCons
       => ToTH MetaCons (Generics.C1 metaCons rep) where
@@ -179,18 +185,19 @@ instance ToTH [MetaCons] rep
   toTH _ = toTH (Proxy @rep)
 
 instance ToTH [MetaCons] Generics.V1 where
-  toTH _ = []
+  toTH _ = pure []
 
 instance ToTH MetaCons metaCons
       => ToTH [MetaCons] (Generics.C1 metaCons rep) where
-  toTH _ = [toTH (Proxy @metaCons)]
+  toTH _ = (:[]) <$> toTH (Proxy @metaCons)
 
 instance ( ToTH [MetaCons] rep1
          , ToTH [MetaCons] rep2
          )
       => ToTH [MetaCons] (rep1 Generics.:+: rep2) where
-  toTH _ = toTH (Proxy @rep1)
-        ++ toTH (Proxy @rep2)
+  toTH _ = (++)
+       <$> toTH (Proxy @rep1)
+       <*> toTH (Proxy @rep2)
 
 
 data MetaData = MetaData
@@ -207,10 +214,10 @@ instance ( KnownSymbol datatypeName
          , ToTH Bool   isNewtype
          )
       => ToTH MetaData ('Generics.MetaData datatypeName moduleName packageName isNewtype) where
-  toTH _ = MetaData (symbolVal (Proxy @datatypeName))
-                    (symbolVal (Proxy @moduleName))
-                    (symbolVal (Proxy @packageName))
-                    (toTH      (Proxy @isNewtype))
+  toTH _ = MetaData <$> pure (symbolVal (Proxy @datatypeName))
+                    <*> pure (symbolVal (Proxy @moduleName))
+                    <*> pure (symbolVal (Proxy @packageName))
+                    <*> toTH      (Proxy @isNewtype)
 
 instance ToTH MetaData metaData
       => ToTH MetaData (Generics.D1 metaData rep) where

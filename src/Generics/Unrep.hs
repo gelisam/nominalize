@@ -28,14 +28,14 @@ makeUnrep :: forall (rep :: * -> *)
              )
           => Proxy rep -> Q [Dec]
 makeUnrep _ = do
-  let metaData :: MetaData
-      metaData = toTH (Proxy @rep)
+  metaData :: MetaData
+           <- toTH (Proxy @rep)
 
-      metaConsList :: [MetaCons]
-      metaConsList = toTH (Proxy @rep)
+  metaConsList :: [MetaCons]
+               <- toTH (Proxy @rep)
 
-      metaSelListList :: [[MetaSel]]
-      metaSelListList = toTH (Proxy @rep)
+  metaSelListList :: [[MetaSel]]
+                  <- toTH (Proxy @rep)
 
   typeName :: Name
            <- newName (metaDataDatatypeName metaData ++ "2")
