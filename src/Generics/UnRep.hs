@@ -1,14 +1,14 @@
 {-# LANGUAGE FlexibleContexts, KindSignatures, ScopedTypeVariables, TypeApplications #-}
-module Generics.Unrep where
+module Generics.UnRep where
 
 import Data.Proxy
 import qualified Language.Haskell.TH as TH
 
-import Generics.Unrep.ToTH
+import Generics.UnRep.ToTH
 
 
-makeUnrep :: forall (rep :: * -> *). ToTH TH.Dec rep
+makeUnRep :: forall (rep :: * -> *). ToTH TH.Dec rep
           => Proxy rep -> TH.Q [TH.Dec]
-makeUnrep _ = do
+makeUnRep _ = do
   dec :: TH.Dec <- toTH (Proxy @rep)
   pure [dec]

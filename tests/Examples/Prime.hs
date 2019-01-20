@@ -8,7 +8,7 @@ import Data.Proxy
 import GHC.Generics
 import GHC.TypeLits
 
-import Generics.Unrep
+import Generics.UnRep
 
 
 -- |
@@ -18,7 +18,7 @@ import Generics.Unrep
 -- :{
 -- data Tree = Leaf | Branch Tree Tree
 --   deriving Generic
--- makeUnrep (Proxy @(Prime Tree))
+-- makeUnRep (Proxy @(Prime Tree))
 -- :}
 --
 -- >>> :info Tree'

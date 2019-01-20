@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, PolyKinds, ScopedTypeVariables, TemplateHaskell, TypeApplications, TypeOperators, UndecidableInstances #-}
-module Generics.Unrep.ToTH where
+module Generics.UnRep.ToTH where
 
 import Data.Functor.Identity
 import Data.Proxy
