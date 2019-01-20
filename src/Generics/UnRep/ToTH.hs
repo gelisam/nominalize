@@ -10,14 +10,14 @@ import qualified Language.Haskell.TH.Syntax as TH
 
 
 class ToTH (th :: *) (rep :: k) where
-  toTH :: proxy rep -> TH.Q th
+  toTH :: proxy rep -> th
 
 
 instance ToTH Bool 'True where
-  toTH _ = pure True
+  toTH _ = True
 
 instance ToTH Bool 'False where
-  toTH _ = pure False
+  toTH _ = False
 
 
 instance KnownSymbol symbol
@@ -27,8 +27,8 @@ instance KnownSymbol symbol
 -- | Use this instead of 'toTH' if @-Wsimplifiable-class-constraints@ complains
 -- about the @ToTH String symbol@ constraint.
 toTH'String :: forall proxy symbol. KnownSymbol symbol
-            => proxy symbol -> TH.Q String
-toTH'String _ = pure $ symbolVal (Proxy @symbol)
+            => proxy symbol -> String
+toTH'String _ = symbolVal (Proxy @symbol)
 
 instance KnownSymbol symbol
       => ToTH TH.Name symbol where
@@ -37,36 +37,36 @@ instance KnownSymbol symbol
 -- | Use this instead of 'toTH' if @-Wsimplifiable-class-constraints@ complains
 -- about the @ToTH TH.Name rep@ constraint.
 toTH'Name :: forall proxy symbol. KnownSymbol symbol
-          => proxy symbol -> TH.Q TH.Name
-toTH'Name _ = TH.mkName <$> toTH'String (Proxy @symbol)
+          => proxy symbol -> TH.Name
+toTH'Name _ = TH.mkName $ toTH'String (Proxy @symbol)
 
 
 instance ToTH (Maybe a) 'Nothing where
-  toTH _ = pure Nothing
+  toTH _ = Nothing
 
 instance ToTH a rep
       => ToTH (Maybe a) ('Just rep) where
-  toTH _ = Just <$> toTH (Proxy @rep)
+  toTH _ = Just $ toTH (Proxy @rep)
 
 
 instance ToTH TH.SourceUnpackedness 'Generics.NoSourceUnpackedness where
-  toTH _ = pure TH.NoSourceUnpackedness
+  toTH _ = TH.NoSourceUnpackedness
 
 instance ToTH TH.SourceUnpackedness 'Generics.SourceNoUnpack where
-  toTH _ = pure TH.SourceNoUnpack
+  toTH _ = TH.SourceNoUnpack
 
 instance ToTH TH.SourceUnpackedness 'Generics.SourceUnpack where
-  toTH _ = pure TH.SourceUnpack
+  toTH _ = TH.SourceUnpack
 
 
 instance ToTH TH.SourceStrictness 'Generics.NoSourceStrictness where
-  toTH _ = pure TH.NoSourceStrictness
+  toTH _ = TH.NoSourceStrictness
 
 instance ToTH TH.SourceStrictness 'Generics.SourceLazy where
-  toTH _ = pure TH.SourceLazy
+  toTH _ = TH.SourceLazy
 
 instance ToTH TH.SourceStrictness 'Generics.SourceStrict where
-  toTH _ = pure TH.SourceStrict
+  toTH _ = TH.SourceStrict
 
 
 data Field f = Field
@@ -89,30 +89,25 @@ instance ( ToTH (Maybe TH.Name)       name
               (Generics.S1 ('Generics.MetaSel name sourceUnpackedness sourceStrictness decidedStrictness)
                            rep)
          where
-  toTH _ = Field
-       <$> toTH (Proxy @name)
-       <*> ( (,)
-         <$> ( TH.Bang
-           <$> toTH (Proxy @sourceUnpackedness)
-           <*> toTH (Proxy @sourceStrictness)
-             )
-         <*> pure (TH.ConT ''Int)
-           )
+  toTH _ = Field (toTH (Proxy @name))
+                 ( TH.Bang (toTH (Proxy @sourceUnpackedness))
+                           (toTH (Proxy @sourceStrictness))
+                 , TH.ConT ''Int
+                 )
 
 instance ToTH [Field Maybe] Generics.U1 where
-  toTH _ = pure []
+  toTH _ = []
 
 instance ToTH (Field Maybe) (Generics.S1 metaSel rep)
       => ToTH [Field Maybe] (Generics.S1 metaSel rep) where
-  toTH _ = (:[]) <$> toTH (Proxy @(Generics.S1 metaSel rep))
+  toTH _ = [toTH (Proxy @(Generics.S1 metaSel rep))]
 
 instance ( ToTH [Field Maybe] rep1
          , ToTH [Field Maybe] rep2
          )
       => ToTH [Field Maybe] (rep1 Generics.:*: rep2) where
-  toTH _ = (++)
-       <$> toTH (Proxy @rep1)
-       <*> toTH (Proxy @rep2)
+  toTH _ = toTH (Proxy @rep1)
+        ++ toTH (Proxy @rep2)
 
 
 instance ( KnownSymbol        name
@@ -122,36 +117,41 @@ instance ( KnownSymbol        name
               (Generics.C1 ('Generics.MetaCons name fixity isRecord)
                            rep)
          where
-  toTH _ = do
-    nameString  :: String <- pure $ symbolVal (Proxy @name)
-    name        :: TH.Name       <- toTH'Name (Proxy @name)
-    fieldMaybes :: [Field Maybe] <- toTH      (Proxy @rep)
-    case (take 1 nameString, fieldMaybes, traverse sequenceField fieldMaybes) of
-      (":", [l, r], Nothing)
-        -> pure $ TH.InfixC (fieldBangType l)
-                            name
-                            (fieldBangType r)
-      (_, _, Nothing)
-        -> pure $ TH.NormalC name
-                             (map fieldBangType fieldMaybes)
-      (_, _, Just fields)
-        -> pure $ TH.RecC name
-                          (map fieldVarBangType fields)
+  toTH _ = case (take 1 nameString, fieldMaybes, traverse sequenceField fieldMaybes) of
+    (":", [l, r], Nothing)
+      -> TH.InfixC (fieldBangType l)
+                   name
+                   (fieldBangType r)
+    (_, _, Nothing)
+      -> TH.NormalC name
+                    (map fieldBangType fieldMaybes)
+    (_, _, Just fields)
+      -> TH.RecC name
+                 (map fieldVarBangType fields)
+    where
+      nameString :: String
+      nameString = symbolVal (Proxy @name)
+
+      name :: TH.Name
+      name = toTH'Name (Proxy @name)
+
+      fieldMaybes :: [Field Maybe]
+      fieldMaybes = toTH (Proxy @rep)
+
 
 instance ToTH [TH.Con] Generics.V1 where
-  toTH _ = pure []
+  toTH _ = []
 
 instance ToTH TH.Con   (Generics.C1 metaCons rep)
       => ToTH [TH.Con] (Generics.C1 metaCons rep) where
-  toTH _ = (:[]) <$> toTH (Proxy @(Generics.C1 metaCons rep))
+  toTH _ = [toTH (Proxy @(Generics.C1 metaCons rep))]
 
 instance ( ToTH [TH.Con] rep1
          , ToTH [TH.Con] rep2
          )
       => ToTH [TH.Con] (rep1 Generics.:+: rep2) where
-  toTH _ = (++)
-       <$> toTH (Proxy @rep1)
-       <*> toTH (Proxy @rep2)
+  toTH _ = toTH (Proxy @rep1)
+        ++ toTH (Proxy @rep2)
 
 
 instance ( KnownSymbol   datatypeName
@@ -161,11 +161,16 @@ instance ( KnownSymbol   datatypeName
       => ToTH TH.Dec
               (Generics.D1 ('Generics.MetaData datatypeName moduleName packageName isNewtype) rep)
          where
-  toTH _ = do
-    name         :: TH.Name  <- toTH'Name (Proxy @datatypeName)
-    isNewtype    :: Bool     <- toTH      (Proxy @isNewtype)
-    constructors :: [TH.Con] <- toTH      (Proxy @rep)
-    case (isNewtype, constructors) of
+  toTH _ = case (isNewtype, constructors) of
       (True, [constructor])
-        -> pure $ TH.NewtypeD [] name [] Nothing constructor  []
-      _ -> pure $ TH.DataD    [] name [] Nothing constructors []
+        -> TH.NewtypeD [] name [] Nothing constructor  []
+      _ -> TH.DataD    [] name [] Nothing constructors []
+    where
+      name :: TH.Name
+      name = toTH'Name (Proxy @datatypeName)
+
+      isNewtype :: Bool
+      isNewtype = toTH (Proxy @isNewtype)
+
+      constructors :: [TH.Con]
+      constructors = toTH (Proxy @rep)

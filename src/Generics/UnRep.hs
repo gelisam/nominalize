@@ -9,6 +9,4 @@ import Generics.UnRep.ToTH
 
 makeUnRep :: forall (rep :: * -> *). ToTH TH.Dec rep
           => Proxy rep -> TH.Q [TH.Dec]
-makeUnRep _ = do
-  dec :: TH.Dec <- toTH (Proxy @rep)
-  pure [dec]
+makeUnRep _ = pure [toTH (Proxy @rep)]
