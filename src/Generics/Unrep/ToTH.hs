@@ -1,6 +1,7 @@
-{-# LANGUAGE DataKinds, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, PolyKinds, ScopedTypeVariables, TypeApplications, TypeOperators #-}
+{-# LANGUAGE DataKinds, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses, PolyKinds, ScopedTypeVariables, TemplateHaskell, TypeApplications, TypeOperators, UndecidableInstances #-}
 module Generics.Unrep.ToTH where
 
+import Data.Functor.Identity
 import Data.Proxy
 import GHC.TypeLits
 
@@ -19,18 +20,25 @@ instance ToTH Bool 'False where
   toTH _ = pure False
 
 
-instance KnownNat rep
-      => ToTH Integer rep where
-  toTH _ = pure $ natVal (Proxy @rep)
-
-instance ToTH Integer rep
-      => ToTH Int rep where
-  toTH _ = fromInteger <$> toTH (Proxy @rep)
-
-
 instance KnownSymbol symbol
       => ToTH String symbol where
-  toTH _ = pure $ symbolVal (Proxy @symbol)
+  toTH = toTH'String
+
+-- | Use this instead of 'toTH' if @-Wsimplifiable-class-constraints@ complains
+-- about the @ToTH String symbol@ constraint.
+toTH'String :: forall proxy symbol. KnownSymbol symbol
+            => proxy symbol -> TH.Q String
+toTH'String _ = pure $ symbolVal (Proxy @symbol)
+
+instance KnownSymbol symbol
+      => ToTH TH.Name symbol where
+  toTH = toTH'Name
+
+-- | Use this instead of 'toTH' if @-Wsimplifiable-class-constraints@ complains
+-- about the @ToTH TH.Name rep@ constraint.
+toTH'Name :: forall proxy symbol. KnownSymbol symbol
+          => proxy symbol -> TH.Q TH.Name
+toTH'Name _ = TH.mkName <$> toTH'String (Proxy @symbol)
 
 
 instance ToTH (Maybe a) 'Nothing where
@@ -39,28 +47,6 @@ instance ToTH (Maybe a) 'Nothing where
 instance ToTH a rep
       => ToTH (Maybe a) ('Just rep) where
   toTH _ = Just <$> toTH (Proxy @rep)
-
-
-instance ToTH TH.FixityDirection 'Generics.LeftAssociative where
-  toTH _ = pure TH.InfixL
-
-instance ToTH TH.FixityDirection 'Generics.RightAssociative where
-  toTH _ = pure TH.InfixR
-
-instance ToTH TH.FixityDirection 'Generics.NotAssociative where
-  toTH _ = pure TH.InfixN
-
-
-instance ToTH (Maybe TH.Fixity) 'Generics.PrefixI where
-  toTH _ = pure Nothing
-
-instance ( ToTH TH.FixityDirection associativity
-         , ToTH Int                precedence
-         ) => ToTH (Maybe TH.Fixity) ('Generics.InfixI associativity precedence) where
-  toTH _ = Just <$> ( TH.Fixity
-                  <$> toTH (Proxy @precedence)
-                  <*> toTH (Proxy @associativity)
-                    )
 
 
 instance ToTH TH.SourceUnpackedness 'Generics.NoSourceUnpackedness where
@@ -83,142 +69,103 @@ instance ToTH TH.SourceStrictness 'Generics.SourceStrict where
   toTH _ = pure TH.SourceStrict
 
 
-instance ToTH TH.DecidedStrictness 'Generics.DecidedLazy where
-  toTH _ = pure TH.DecidedLazy
-
-instance ToTH TH.DecidedStrictness 'Generics.DecidedStrict where
-  toTH _ = pure TH.DecidedStrict
-
-instance ToTH TH.DecidedStrictness 'Generics.DecidedUnpack where
-  toTH _ = pure TH.DecidedUnpack
-
-
-data MetaSel = MetaSel
-  { metaSelName               :: Maybe String
-  , metaSelSourceUnpackedness :: TH.SourceUnpackedness
-  , metaSelSourceStrictness   :: TH.SourceStrictness
-  , metaSelDecidedStrictness  :: TH.DecidedStrictness
+data Field f = Field
+  { fieldName     :: f TH.Name
+  , fieldBangType :: TH.BangType
   }
-  deriving (Show, Eq, Ord)
 
-instance ( ToTH (Maybe String)        name
+sequenceField :: Functor f
+              => Field f -> f (Field Identity)
+sequenceField (Field fx y) = (\x -> Field (Identity x) y) <$> fx
+
+fieldVarBangType :: Field Identity -> TH.VarBangType
+fieldVarBangType (Field (Identity x) (y, z)) = (x, y, z)
+
+instance ( ToTH (Maybe TH.Name)       name
          , ToTH TH.SourceUnpackedness sourceUnpackedness
          , ToTH TH.SourceStrictness   sourceStrictness
-         , ToTH TH.DecidedStrictness  decidedStrictness
          )
-      => ToTH MetaSel ('Generics.MetaSel name sourceUnpackedness sourceStrictness decidedStrictness) where
-  toTH _ = MetaSel
+      => ToTH (Field Maybe)
+              (Generics.S1 ('Generics.MetaSel name sourceUnpackedness sourceStrictness decidedStrictness)
+                           rep)
+         where
+  toTH _ = Field
        <$> toTH (Proxy @name)
-       <*> toTH (Proxy @sourceUnpackedness)
-       <*> toTH (Proxy @sourceStrictness)
-       <*> toTH (Proxy @decidedStrictness)
+       <*> ( (,)
+         <$> ( TH.Bang
+           <$> toTH (Proxy @sourceUnpackedness)
+           <*> toTH (Proxy @sourceStrictness)
+             )
+         <*> pure (TH.ConT ''Int)
+           )
 
-instance ToTH MetaSel metaSel
-      => ToTH MetaSel (Generics.S1 metaSel rep) where
-  toTH _ = toTH (Proxy @metaSel)
-
-
-instance ToTH [MetaSel] rep
-      => ToTH [MetaSel] (Generics.C1 metaCons rep) where
-  toTH _ = toTH (Proxy @rep)
-
-instance ToTH [MetaSel] Generics.U1 where
+instance ToTH [Field Maybe] Generics.U1 where
   toTH _ = pure []
 
-instance ToTH MetaSel metaSel
-      => ToTH [MetaSel] (Generics.S1 metaSel rep) where
-  toTH _ = (:[]) <$> toTH (Proxy @metaSel)
+instance ToTH (Field Maybe) (Generics.S1 metaSel rep)
+      => ToTH [Field Maybe] (Generics.S1 metaSel rep) where
+  toTH _ = (:[]) <$> toTH (Proxy @(Generics.S1 metaSel rep))
 
-instance ( ToTH [MetaSel] rep1
-         , ToTH [MetaSel] rep2
+instance ( ToTH [Field Maybe] rep1
+         , ToTH [Field Maybe] rep2
          )
-      => ToTH [MetaSel] (rep1 Generics.:*: rep2) where
+      => ToTH [Field Maybe] (rep1 Generics.:*: rep2) where
   toTH _ = (++)
        <$> toTH (Proxy @rep1)
        <*> toTH (Proxy @rep2)
 
 
-instance ToTH [[MetaSel]] rep
-      => ToTH [[MetaSel]] (Generics.D1 metaData rep) where
-  toTH _ = toTH (Proxy @rep)
+instance ( KnownSymbol        name
+         , ToTH [Field Maybe] rep
+         )
+      => ToTH TH.Con
+              (Generics.C1 ('Generics.MetaCons name fixity isRecord)
+                           rep)
+         where
+  toTH _ = do
+    nameString  :: String <- pure $ symbolVal (Proxy @name)
+    name        :: TH.Name       <- toTH'Name (Proxy @name)
+    fieldMaybes :: [Field Maybe] <- toTH      (Proxy @rep)
+    case (take 1 nameString, fieldMaybes, traverse sequenceField fieldMaybes) of
+      (":", [l, r], Nothing)
+        -> pure $ TH.InfixC (fieldBangType l)
+                            name
+                            (fieldBangType r)
+      (_, _, Nothing)
+        -> pure $ TH.NormalC name
+                             (map fieldBangType fieldMaybes)
+      (_, _, Just fields)
+        -> pure $ TH.RecC name
+                          (map fieldVarBangType fields)
 
-instance ToTH [[MetaSel]] Generics.V1 where
+instance ToTH [TH.Con] Generics.V1 where
   toTH _ = pure []
 
-instance ToTH [MetaSel] rep
-      => ToTH [[MetaSel]] (Generics.C1 metaCons rep) where
-  toTH _ = (:[]) <$> toTH (Proxy @rep)
+instance ToTH TH.Con   (Generics.C1 metaCons rep)
+      => ToTH [TH.Con] (Generics.C1 metaCons rep) where
+  toTH _ = (:[]) <$> toTH (Proxy @(Generics.C1 metaCons rep))
 
-instance ( ToTH [[MetaSel]] rep1
-         , ToTH [[MetaSel]] rep2
+instance ( ToTH [TH.Con] rep1
+         , ToTH [TH.Con] rep2
          )
-      => ToTH [[MetaSel]] (rep1 Generics.:+: rep2) where
+      => ToTH [TH.Con] (rep1 Generics.:+: rep2) where
   toTH _ = (++)
        <$> toTH (Proxy @rep1)
        <*> toTH (Proxy @rep2)
 
 
-data MetaCons = MetaCons
-  { metaConsName     :: String
-  , metaConsFixity   :: Maybe TH.Fixity
-  , metaConsIsRecord :: Bool
-  }
-  deriving (Show, Eq, Ord)
-
-instance ( KnownSymbol            name
-         , ToTH (Maybe TH.Fixity) fixity
-         , ToTH Bool              isRecord
+instance ( KnownSymbol   datatypeName
+         , ToTH Bool     isNewtype
+         , ToTH [TH.Con] rep
          )
-      => ToTH MetaCons ('Generics.MetaCons name fixity isRecord) where
-  toTH _ = MetaCons
-       <$> pure (symbolVal (Proxy @name))
-       <*> toTH (Proxy @fixity)
-       <*> toTH (Proxy @isRecord)
-
-instance ToTH MetaCons metaCons
-      => ToTH MetaCons (Generics.C1 metaCons rep) where
-  toTH _ = toTH (Proxy @metaCons)
-
-
-instance ToTH [MetaCons] rep
-      => ToTH [MetaCons] (Generics.D1 metaData rep) where
-  toTH _ = toTH (Proxy @rep)
-
-instance ToTH [MetaCons] Generics.V1 where
-  toTH _ = pure []
-
-instance ToTH MetaCons metaCons
-      => ToTH [MetaCons] (Generics.C1 metaCons rep) where
-  toTH _ = (:[]) <$> toTH (Proxy @metaCons)
-
-instance ( ToTH [MetaCons] rep1
-         , ToTH [MetaCons] rep2
-         )
-      => ToTH [MetaCons] (rep1 Generics.:+: rep2) where
-  toTH _ = (++)
-       <$> toTH (Proxy @rep1)
-       <*> toTH (Proxy @rep2)
-
-
-data MetaData = MetaData
-  { metaDataDatatypeName :: String
-  , metaDataModuleName   :: String
-  , metaDataPackageName  :: String
-  , metaDataIsNewtype    :: Bool
-  }
-  deriving (Show, Eq, Ord)
-
-instance ( KnownSymbol datatypeName
-         , KnownSymbol moduleName
-         , KnownSymbol packageName
-         , ToTH Bool   isNewtype
-         )
-      => ToTH MetaData ('Generics.MetaData datatypeName moduleName packageName isNewtype) where
-  toTH _ = MetaData <$> pure (symbolVal (Proxy @datatypeName))
-                    <*> pure (symbolVal (Proxy @moduleName))
-                    <*> pure (symbolVal (Proxy @packageName))
-                    <*> toTH      (Proxy @isNewtype)
-
-instance ToTH MetaData metaData
-      => ToTH MetaData (Generics.D1 metaData rep) where
-  toTH _ = toTH (Proxy @metaData)
+      => ToTH TH.Dec
+              (Generics.D1 ('Generics.MetaData datatypeName moduleName packageName isNewtype) rep)
+         where
+  toTH _ = do
+    name         :: TH.Name  <- toTH'Name (Proxy @datatypeName)
+    isNewtype    :: Bool     <- toTH      (Proxy @isNewtype)
+    constructors :: [TH.Con] <- toTH      (Proxy @rep)
+    case (isNewtype, constructors) of
+      (True, [constructor])
+        -> pure $ TH.NewtypeD [] name [] Nothing constructor  []
+      _ -> pure $ TH.DataD    [] name [] Nothing constructors []

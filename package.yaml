@@ -21,8 +21,11 @@ library:
 
 tests:
   doctests:
-    source-dirs: tests
+    source-dirs:
+      - src
+      - tests
     main: doctests.hs
     dependencies:
+      - generics-unrep
       - doctest
       - doctest-discover

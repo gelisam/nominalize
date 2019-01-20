@@ -2,65 +2,13 @@
 module Generics.Unrep where
 
 import Data.Proxy
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
+import qualified Language.Haskell.TH as TH
 
 import Generics.Unrep.ToTH
 
 
--- |
--- >>> :set -XDeriveGeneric
--- >>> :set -XTemplateHaskell
--- >>> :set -XTypeApplications
--- >>> import GHC.Generics
--- >>> :{
--- data Tree = Leaf | Branch Tree Tree deriving Generic
--- makeUnrep (Proxy @(Rep Tree))
--- :}
---
--- >>> :info Tree2
--- data Tree2 = Leaf2 | Branch2 Tree2 Tree2
--- ...
-makeUnrep :: forall (rep :: * -> *)
-           . ( ToTH MetaData    rep
-             , ToTH [MetaCons]  rep
-             , ToTH [[MetaSel]] rep
-             )
-          => Proxy rep -> Q [Dec]
+makeUnrep :: forall (rep :: * -> *). ToTH TH.Dec rep
+          => Proxy rep -> TH.Q [TH.Dec]
 makeUnrep _ = do
-  metaData :: MetaData
-           <- toTH (Proxy @rep)
-
-  metaConsList :: [MetaCons]
-               <- toTH (Proxy @rep)
-
-  metaSelListList :: [[MetaSel]]
-                  <- toTH (Proxy @rep)
-
-  typeName :: Name
-           <- newName (metaDataDatatypeName metaData ++ "2")
-
-  let typeParameters :: [TyVarBndr]
-      typeParameters = []
-
-      makeBang :: MetaSel -> Q Bang
-      makeBang metaSel = pure $ Bang (metaSelSourceUnpackedness metaSel)
-                                     (metaSelSourceStrictness   metaSel)
-
-      makeBangType :: MetaSel -> Q BangType
-      makeBangType metaSel = (,)
-                         <$> makeBang metaSel
-                         <*> pure (ConT typeName)
-
-      makeCon :: MetaCons -> [MetaSel] -> Q Con
-      makeCon metaCons metaSelList = NormalC
-                                 <$> newName (metaConsName metaCons ++ "2")
-                                 <*> traverse makeBangType metaSelList
-
-  constructors :: [Con]
-               <- sequence (zipWith makeCon metaConsList metaSelListList)
-
-  let dec :: Dec
-      dec = DataD [] typeName typeParameters Nothing constructors []
-
+  dec :: TH.Dec <- toTH (Proxy @rep)
   pure [dec]
