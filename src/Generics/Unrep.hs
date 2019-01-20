@@ -42,14 +42,17 @@ makeUnrep _ = do
   typeName :: Name
            <- newName (metaDataDatatypeName metaData ++ "2")
 
-  defaultBang :: Bang
-              <- bang noSourceUnpackedness noSourceStrictness
-
   let typeParameters :: [TyVarBndr]
       typeParameters = []
 
+      makeBang :: MetaSel -> Q Bang
+      makeBang metaSel = pure $ Bang (metaSelSourceUnpackedness metaSel)
+                                     (metaSelSourceStrictness   metaSel)
+
       makeBangType :: MetaSel -> Q BangType
-      makeBangType _ = pure (defaultBang, ConT typeName)
+      makeBangType metaSel = (,)
+                         <$> makeBang metaSel
+                         <*> pure (ConT typeName)
 
       makeCon :: MetaCons -> [MetaSel] -> Q Con
       makeCon metaCons metaSelList = NormalC

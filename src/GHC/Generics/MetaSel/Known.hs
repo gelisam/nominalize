@@ -3,6 +3,7 @@ module GHC.Generics.MetaSel.Known where
 
 import Data.Proxy
 import qualified GHC.Generics as Generics
+import qualified Language.Haskell.TH.Syntax as TH
 
 import GHC.Generics.DecidedStrictness.Known
 import GHC.Generics.SourceStrictness.Known
@@ -12,9 +13,9 @@ import GHC.TypeLits.Symbol.Known
 
 data MetaSel = MetaSel
   { metaSelName               :: Maybe String
-  , metaSelSourceUnpackedness :: Generics.SourceUnpackedness
-  , metaSelSourceStrictness   :: Generics.SourceStrictness
-  , metaSelDecidedStrictness  :: Generics.DecidedStrictness
+  , metaSelSourceUnpackedness :: TH.SourceUnpackedness
+  , metaSelSourceStrictness   :: TH.SourceStrictness
+  , metaSelDecidedStrictness  :: TH.DecidedStrictness
   }
   deriving (Show, Eq, Ord)
 

@@ -1,17 +1,18 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 module GHC.Generics.SourceStrictness.Known where
 
-import GHC.Generics
+import qualified GHC.Generics as Generics
+import qualified Language.Haskell.TH.Syntax as TH
 
 
-class KnownSourceStrictness (sourceStrictness :: SourceStrictness) where
-  sourceStrictnessVal :: proxy sourceStrictness -> SourceStrictness
+class KnownSourceStrictness (sourceStrictness :: Generics.SourceStrictness) where
+  sourceStrictnessVal :: proxy sourceStrictness -> TH.SourceStrictness
 
-instance KnownSourceStrictness 'NoSourceStrictness where
-  sourceStrictnessVal _ = NoSourceStrictness
+instance KnownSourceStrictness 'Generics.NoSourceStrictness where
+  sourceStrictnessVal _ = TH.NoSourceStrictness
 
-instance KnownSourceStrictness 'SourceLazy where
-  sourceStrictnessVal _ = SourceLazy
+instance KnownSourceStrictness 'Generics.SourceLazy where
+  sourceStrictnessVal _ = TH.SourceLazy
 
-instance KnownSourceStrictness 'SourceStrict where
-  sourceStrictnessVal _ = SourceStrict
+instance KnownSourceStrictness 'Generics.SourceStrict where
+  sourceStrictnessVal _ = TH.SourceStrict

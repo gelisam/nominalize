@@ -1,17 +1,18 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 module GHC.Generics.DecidedStrictness.Known where
 
-import GHC.Generics
+import qualified GHC.Generics as Generics
+import qualified Language.Haskell.TH.Syntax as TH
 
 
-class KnownDecidedStrictness (decidedStrictness :: DecidedStrictness) where
-  decidedStrictnessVal :: proxy decidedStrictness -> DecidedStrictness
+class KnownDecidedStrictness (decidedStrictness :: Generics.DecidedStrictness) where
+  decidedStrictnessVal :: proxy decidedStrictness -> TH.DecidedStrictness
 
-instance KnownDecidedStrictness 'DecidedLazy where
-  decidedStrictnessVal _ = DecidedLazy
+instance KnownDecidedStrictness 'Generics.DecidedLazy where
+  decidedStrictnessVal _ = TH.DecidedLazy
 
-instance KnownDecidedStrictness 'DecidedStrict where
-  decidedStrictnessVal _ = DecidedStrict
+instance KnownDecidedStrictness 'Generics.DecidedStrict where
+  decidedStrictnessVal _ = TH.DecidedStrict
 
-instance KnownDecidedStrictness 'DecidedUnpack where
-  decidedStrictnessVal _ = DecidedUnpack
+instance KnownDecidedStrictness 'Generics.DecidedUnpack where
+  decidedStrictnessVal _ = TH.DecidedUnpack

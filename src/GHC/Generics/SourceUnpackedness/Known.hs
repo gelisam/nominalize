@@ -1,17 +1,18 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 module GHC.Generics.SourceUnpackedness.Known where
 
-import GHC.Generics
+import qualified GHC.Generics as Generics
+import qualified Language.Haskell.TH.Syntax as TH
 
 
-class KnownSourceUnpackedness (sourceUnpackedness :: SourceUnpackedness) where
-  sourceUnpackednessVal :: proxy sourceUnpackedness -> SourceUnpackedness
+class KnownSourceUnpackedness (sourceUnpackedness :: Generics.SourceUnpackedness) where
+  sourceUnpackednessVal :: proxy sourceUnpackedness -> TH.SourceUnpackedness
 
-instance KnownSourceUnpackedness 'NoSourceUnpackedness where
-  sourceUnpackednessVal _ = NoSourceUnpackedness
+instance KnownSourceUnpackedness 'Generics.NoSourceUnpackedness where
+  sourceUnpackednessVal _ = TH.NoSourceUnpackedness
 
-instance KnownSourceUnpackedness 'SourceNoUnpack where
-  sourceUnpackednessVal _ = SourceNoUnpack
+instance KnownSourceUnpackedness 'Generics.SourceNoUnpack where
+  sourceUnpackednessVal _ = TH.SourceNoUnpack
 
-instance KnownSourceUnpackedness 'SourceUnpack where
-  sourceUnpackednessVal _ = SourceUnpack
+instance KnownSourceUnpackedness 'Generics.SourceUnpack where
+  sourceUnpackednessVal _ = TH.SourceUnpack
