@@ -30,15 +30,15 @@ type family Prime a where
     = Prime'Data (Rep a)
 
 type family Prime'Data rep where
-  Prime'Data (D1 (MetaData datatypeName moduleName packageName isNewtype) rep)
-    = D1 (MetaData (Prime'Name datatypeName) moduleName packageName isNewtype)
+  Prime'Data (D1 ('MetaData datatypeName moduleName packageName isNewtype) rep)
+    = D1 ('MetaData (Prime'Name datatypeName) moduleName packageName isNewtype)
          (Prime'Cons rep)
 
 type family Prime'Cons rep where
   Prime'Cons V1
     = V1
-  Prime'Cons (C1 (MetaCons name fixity isRecord) rep)
-    = C1 (MetaCons (Prime'Name name) fixity isRecord)
+  Prime'Cons (C1 ('MetaCons name fixity isRecord) rep)
+    = C1 ('MetaCons (Prime'Name name) fixity isRecord)
          (Prime'Sel rep)
   Prime'Cons (rep1 :+: rep2)
     = Prime'Cons rep1 :+: Prime'Cons rep2
@@ -46,8 +46,8 @@ type family Prime'Cons rep where
 type family Prime'Sel rep where
   Prime'Sel U1
     = U1
-  Prime'Sel (S1 (MetaSel maybeName sourceUnpackedness sourceStrictness decidedStrictness) rep)
-    = S1 (MetaSel (Prime'MaybeName maybeName) sourceUnpackedness sourceStrictness decidedStrictness)
+  Prime'Sel (S1 ('MetaSel maybeName sourceUnpackedness sourceStrictness decidedStrictness) rep)
+    = S1 ('MetaSel (Prime'MaybeName maybeName) sourceUnpackedness sourceStrictness decidedStrictness)
          rep
   Prime'Sel (rep1 :*: rep2)
     = Prime'Sel rep1 :*: Prime'Sel rep2
