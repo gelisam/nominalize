@@ -2,9 +2,10 @@
 module Generics.UnRep.ToTH where
 
 import Data.Functor.Identity
+import Data.List
 import Data.Proxy
 import GHC.TypeLits
-
+import qualified Data.Typeable as Typeable
 import qualified GHC.Generics as Generics
 import qualified Language.Haskell.TH.Syntax as TH
 
@@ -49,6 +50,26 @@ instance ToTH a rep
   toTH _ = Just $ toTH (Proxy @rep)
 
 
+instance Typeable.Typeable a
+      => ToTH TH.Type (Generics.K1 i a) where
+  toTH _ = go $ Typeable.typeRep (Proxy @a)
+    where
+      go :: Typeable.TypeRep -> TH.Type
+      go typeRep_ = foldl' TH.AppT thTyCon thArgs
+        where
+          tyCon :: Typeable.TyCon
+          tyCon = Typeable.typeRepTyCon typeRep_
+
+          thTyCon :: TH.Type
+          thTyCon = TH.ConT $ TH.mkName $ Typeable.tyConName tyCon
+
+          args :: [Typeable.TypeRep]
+          args = Typeable.typeRepArgs typeRep_
+
+          thArgs :: [TH.Type]
+          thArgs = map go args
+
+
 instance ToTH TH.SourceUnpackedness 'Generics.NoSourceUnpackedness where
   toTH _ = TH.NoSourceUnpackedness
 
@@ -84,6 +105,7 @@ fieldVarBangType (Field (Identity x) (y, z)) = (x, y, z)
 instance ( ToTH (Maybe TH.Name)       name
          , ToTH TH.SourceUnpackedness sourceUnpackedness
          , ToTH TH.SourceStrictness   sourceStrictness
+         , ToTH TH.Type               rep
          )
       => ToTH (Field Maybe)
               (Generics.S1 ('Generics.MetaSel name sourceUnpackedness sourceStrictness decidedStrictness)
@@ -92,7 +114,7 @@ instance ( ToTH (Maybe TH.Name)       name
   toTH _ = Field (toTH (Proxy @name))
                  ( TH.Bang (toTH (Proxy @sourceUnpackedness))
                            (toTH (Proxy @sourceStrictness))
-                 , TH.ConT ''Int
+                 , toTH (Proxy @rep)
                  )
 
 instance ToTH [Field Maybe] Generics.U1 where

@@ -4,7 +4,6 @@
 {-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, UndecidableInstances #-}
 module Examples.Prime where
 
-import Data.Proxy
 import GHC.Generics
 import GHC.TypeLits
 
@@ -15,14 +14,15 @@ import Generics.UnRep
 -- >>> :set -XDeriveGeneric
 -- >>> :set -XTemplateHaskell
 -- >>> :set -XTypeApplications
+-- >>> import Data.Proxy
+-- >>> data Person = Person { name :: String, age :: Int }  deriving Generic
 -- :{
--- data Tree = Leaf | Branch Tree Tree
---   deriving Generic
--- makeUnRep (Proxy @(Prime Tree))
+-- data Foo = Foo  -- to interpret the next line as TemplateHaskell, not an expression
+-- makeUnRep (Proxy @(Prime Person))
 -- :}
 --
--- >>> :info Tree'
--- data Tree' = Leaf' | Branch' Int Int
+-- >>> :info Person'
+-- data Person' = Person' {name' :: [Char], age' :: Int}
 -- ...
 
 type family Prime a where
