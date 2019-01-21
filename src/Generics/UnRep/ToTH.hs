@@ -61,7 +61,9 @@ instance Typeable.Typeable a
           tyCon = Typeable.typeRepTyCon typeRep_
 
           thTyCon :: TH.Type
-          thTyCon = TH.ConT $ TH.mkName $ Typeable.tyConName tyCon
+          thTyCon = TH.ConT $ TH.mkNameG_tc (Typeable.tyConPackage tyCon)
+                                            (Typeable.tyConModule  tyCon)
+                                            (Typeable.tyConName    tyCon)
 
           args :: [Typeable.TypeRep]
           args = Typeable.typeRepArgs typeRep_
