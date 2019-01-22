@@ -8,7 +8,6 @@ import GHC.Generics
 import GHC.TypeLits
 
 import Generics.UnRep
-import qualified Examples.Fake as Fake
 
 
 -- |
@@ -16,14 +15,16 @@ import qualified Examples.Fake as Fake
 -- >>> :set -XTemplateHaskell
 -- >>> :set -XTypeApplications
 -- >>> import Data.Proxy
+-- >>> import qualified Examples.Fake as Fake
 -- >>> data Person = Person { name :: Fake.String, age :: Int }  deriving Generic
 -- :{
 -- data Foo = Foo  -- to interpret the next line as TemplateHaskell, not an expression
 -- makeUnRep (Proxy @(Prime Person))
 -- :}
 --
--- Make sure the generated type is also using 'Fake.String', not 'Prelude.String'.
--- >>> let person' = Person' Fake.String 42
+-- >>> :info Person'
+-- data Person' = Person' {name' :: Fake.String, age' :: Int}
+-- ...
 
 type family Prime a where
   Prime a
