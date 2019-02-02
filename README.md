@@ -1,4 +1,4 @@
-# generics-unrep
+# unrepresentable
 
 (work in progress: this Readme documents the aspirations of this package, not its current status)
 
