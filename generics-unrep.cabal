@@ -1,0 +1,57 @@
+-- This file has been generated from package.yaml by hpack version 0.21.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 51948ac68782581c4b9fab33c6c375d6204a8b833621f8d6986292e53bdc401e
+
+cabal-version:  >= 1.10
+name:           generics-unrep
+version:        0.1.0.0
+category:       Generics
+homepage:       https://github.com/gelisam/generics-unrep#readme
+bug-reports:    https://github.com/gelisam/generics-unrep/issues
+author:         Samuel Gélineau
+maintainer:     gelisam+github@gmail.com
+license:        PublicDomain
+build-type:     Simple
+
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/gelisam/generics-unrep
+
+library
+  exposed-modules:
+      Generics.UnRep
+      Generics.UnRep.ToTH
+  other-modules:
+      Paths_generics_unrep
+  hs-source-dirs:
+      src
+  ghc-options: -W -Wall
+  build-depends:
+      base >=4.7 && <5
+    , template-haskell
+  default-language: Haskell2010
+
+test-suite doctests
+  type: exitcode-stdio-1.0
+  main-is: doctests.hs
+  other-modules:
+      Generics.UnRep
+      Generics.UnRep.ToTH
+      Examples.Fake
+      Examples.Prime
+      Paths_generics_unrep
+  hs-source-dirs:
+      src
+      tests
+  build-depends:
+      base >=4.7 && <5
+    , doctest
+    , doctest-discover
+    , generics-unrep
+    , template-haskell
+  default-language: Haskell2010
